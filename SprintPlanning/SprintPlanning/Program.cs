@@ -1,4 +1,5 @@
 using SprintPlanning.Components;
+using SprintPlanning.Hubs;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -23,5 +24,6 @@ app.UseAntiforgery();
 
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
+app.MapHub<CounterHub>("/counterhub");
 
 app.Run();
