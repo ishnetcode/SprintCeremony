@@ -1,0 +1,52 @@
+﻿@page "/joinroom"
+@rendermode InteractiveServer
+@inject NavigationManager Navigation
+@using Microsoft.AspNetCore.WebUtilities
+
+<h3>Join Room</h3>
+
+@if (isJoined)
+{
+    <p>Redirecting to room...</p>
+}
+else
+{
+    <div>
+        <label>Enter Your Name:</label>
+        <input @bind="UserName" placeholder="Your Name" />
+        <button @onclick="JoinRoomAsContributer">Create Room as Moderator</button>
+    </div>
+}
+
+@code {
+    private string UserName;
+    private string RoomId;
+    private bool isJoined = false;
+
+    protected override void OnInitialized()
+    {
+        // Extract RoomId from query string
+        var uri = Navigation.ToAbsoluteUri(Navigation.Uri);
+        var query = QueryHelpers.ParseQuery(uri.Query);
+
+        if (query.ContainsKey("roomId"))
+        {
+            RoomId = query["roomId"];
+        }
+    }
+
+    private async Task JoinRoomAsContributer()
+    {
+        if (!string.IsNullOrEmpty(UserName) && !string.IsNullOrEmpty(RoomId))
+        {
+            // Redirect to the actual room
+            Navigation.NavigateTo($"/room/{RoomId}?role=contributor&name={UserName}");
+            isJoined = true;
+        }
+        else
+        {
+            // Optional: Add a message to indicate the user must enter a name
+            Console.WriteLine("UserName or RoomId is missing!");
+        }
+    }
+}

@@ -1,0 +1,20 @@
+﻿@page "/CreateRoom"
+@rendermode InteractiveServer
+@inject NavigationManager Navigation
+
+<h3>Welcome to Story Pointer</h3>
+
+<input @bind="userName" placeholder="Enter your name" />
+<br />
+<button @onclick="CreateNewRoom">Create Room as Moderator</button>
+
+@code {
+    private string userName;
+
+    private async Task CreateNewRoom()
+    {
+        // Logic to create a new room and navigate to it
+        var roomId = Guid.NewGuid().ToString();
+        Navigation.NavigateTo($"/room/{roomId}?role=moderator&name={userName}");
+    }
+}

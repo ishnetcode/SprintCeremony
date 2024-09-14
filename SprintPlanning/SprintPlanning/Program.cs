@@ -25,5 +25,6 @@ app.UseAntiforgery();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 app.MapHub<CounterHub>("/counterhub");
+app.MapHub<RoomHub>("/hubs/room");
 
 app.Run();

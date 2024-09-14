@@ -1,0 +1,142 @@
+﻿@page "/room/{RoomId}"
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.SignalR.Client
+
+<h3>Story Pointer Room</h3>
+
+<h4>Room ID: @RoomId</h4>
+<p>Welcome, @UserName</p>
+
+<div>
+    <h5>Users in the Room:</h5>
+    <ul>
+        @foreach (var user in UsersInRoom)
+        {
+            <li>@user</li>
+        }
+    </ul>
+</div>
+
+<div>
+    @if (IsModerator)
+    {
+        <h5>Add a Story</h5>
+        <input @bind="StoryTitle" placeholder="Story Title" />
+        <button @onclick="AddStory">Add Story</button>
+    }
+</div>
+
+<div>
+    <h3>Current Stories</h3>
+    <ul>
+        @foreach (var story in Stories)
+        {
+            <li>@story</li>
+        }
+    </ul>
+
+</div>
+
+@if (CurrentStory != null)
+{
+    <h5>@CurrentStory</h5>
+    <div>
+        @if (!HasVoted)
+        {
+            @foreach (var point in StoryPoints)
+            {
+                <button @onclick="() => Vote(point)">@point</button>
+            }
+        }
+        else
+        {
+            <p>You have voted.</p>
+        }
+    </div>
+}
+
+<button @onclick="ShowVotes" disabled="@(!IsModerator)">Show Votes</button>
+
+@code {
+    [Parameter] public string RoomId { get; set; }
+    private string? UserName;
+    private string? Role;
+    private bool IsModerator => Role == "moderator";
+    private string StoryTitle;
+    private string CurrentStory;
+    private bool HasVoted;
+    private List<int> StoryPoints = new List<int> { 0, 1, 2, 3, 5, 8, 13, 21 };
+    private List<string> UsersInRoom = new List<string>();
+    private HubConnection hubConnection;
+    private List<string> Stories = new List<string>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var uri = Navigation.ToAbsoluteUri(Navigation.Uri);
+        var query = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(uri.Query);
+        if (query.Count == 0)
+        {
+            Navigation.NavigateTo($"/joinroom?roomId={RoomId}");
+        }
+
+        Role = query["role"];
+        UserName = query["name"];
+
+        if (string.IsNullOrEmpty(UserName) || string.IsNullOrEmpty(Role))
+        {
+            Navigation.NavigateTo($"/joinroom?roomId={RoomId}");
+        }
+
+        hubConnection = new HubConnectionBuilder()
+            .WithUrl(Navigation.ToAbsoluteUri("/hubs/room"))
+            .Build();
+
+        hubConnection.On<string>("ReceiveStory", async (storyTitle) =>
+        {
+            // Add the new story to the list
+            Stories.Add(storyTitle);
+            await InvokeAsync(StateHasChanged);  // Update the UI
+        });
+
+        hubConnection.On<string, List<string>>("UserJoined", async (userName, users) =>
+        {
+            UsersInRoom = users;
+            await InvokeAsync(StateHasChanged);
+        });
+
+        hubConnection.On<string, int>("VoteCast", (userName, points) =>
+        {
+            // Handle voting display
+        });
+
+        hubConnection.On("ShowVotes", () =>
+        {
+            // Show all votes
+        });
+
+        await hubConnection.StartAsync();
+        await hubConnection.SendAsync("JoinRoom", RoomId, UserName);
+    }
+
+    private async Task AddStory()
+    {
+        if (Role == "moderator" && !string.IsNullOrEmpty(StoryTitle))
+        {
+            // Moderator adds a story and notifies others
+            await hubConnection.SendAsync("AddStory", RoomId, StoryTitle);
+            StoryTitle = string.Empty; // Clear input
+        }
+    }
+
+    private async Task Vote(int point)
+    {
+        HasVoted = true;
+        await hubConnection.SendAsync("CastVote", RoomId, UserName, point);
+    }
+
+    private async Task ShowVotes()
+    {
+        await hubConnection.SendAsync("ShowVotes", RoomId);
+    }
+}

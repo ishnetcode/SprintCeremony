@@ -1,0 +1,36 @@
+﻿@page "/room/{RoomId}/session"
+@using Microsoft.AspNetCore.SignalR.Client
+@inject NavigationManager Navigation
+
+<h3>Room: @RoomId</h3>
+<h4>Participants:</h4>
+<ul>
+    @foreach (var participant in participants)
+    {
+        <li>@participant</li>
+    }
+</ul>
+
+@code {
+    [Parameter] public string RoomId { get; set; }
+    [Parameter] public string User { get; set; }
+
+    private HubConnection hubConnection;
+    private List<string> participants = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        hubConnection = new HubConnectionBuilder()
+            .WithUrl(Navigation.ToAbsoluteUri("/hubs/room"))
+            .Build();
+
+        hubConnection.On<string>("UserJoined", (user) =>
+        {
+            participants.Add(user);
+            StateHasChanged();
+        });
+
+        await hubConnection.StartAsync();
+        await hubConnection.SendAsync("JoinRoom", RoomId, User);
+    }
+}
